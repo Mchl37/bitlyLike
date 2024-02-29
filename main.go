@@ -47,7 +47,7 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Générer une URL raccourcie
+	// Générer une URL raccourcie unique à partir de l'URL d'origine
 	shortURL := generateShortURL(requestBody.LongURL)
 
 	// Enregistrer le mapping dans la base de données
@@ -68,6 +68,14 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 
 	// Répondre avec l'URL raccourcie générée
 	response := map[string]string{"shortURL": shortURL}
+
+	// Définir le type de contenu de la réponse comme JSON
+	w.Header().Set("Content-Type", "application/json")
+
+	// Écrire le code de réponse 200 OK
+	w.WriteHeader(http.StatusOK)
+
+	// Écrire la réponse JSON dans le corps de la réponse
 	json.NewEncoder(w).Encode(response)
 }
 
