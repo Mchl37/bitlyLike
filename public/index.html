@@ -4,7 +4,6 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>BitlyLike</title>
-  <link rel="stylesheet" href="style.css">
   <style>
     * {
       margin: 0;
@@ -29,15 +28,48 @@
       color: #fff;
       font-size: 3rem;
     }
+    #shortened-url {
+      color: #fff;
+      font-size: 1.2rem;
+      display: none;
+    }
   </style>
 </head>
 <body>
   <main>
     <h1>BitlyLike</h1>
-    <form action="#" method="post">
+    <form id="url-form" action="#" method="post">
       <input type="url" name="url" id="url" placeholder="Enter your URL here" required>
       <button type="submit">Shorten</button>
     </form>
+    <div id="shortened-url"></div>
   </main>
+
+  <script>
+    const form = document.getElementById('url-form');
+    const shortenedUrlElement = document.getElementById('shortened-url');
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      const urlInput = document.getElementById('url');
+      const url = urlInput.value;
+
+      try {
+        const response = await fetch('/shorten', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({ longURL: url })
+        });
+        const data = await response.json();
+        shortenedUrlElement.innerText = `Shortened URL: ${data.shortURL}`;
+        shortenedUrlElement.style.display = 'block';
+      } catch (error) {
+        console.error('Error shortening URL:', error);
+        shortenedUrlElement.innerText = 'Error shortening URL';
+      }
+    });
+  </script>
 </body>
 </html>
