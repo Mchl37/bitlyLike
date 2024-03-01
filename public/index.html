@@ -89,7 +89,7 @@
       const urlInput = document.getElementById('url');
       const url = urlInput.value;
   
-      // Désactiver le bouton pendant le traitement de la requête
+      // Désactivation du bouton pendant le traitement de la requête
       submitButton.disabled = true;
   
       try {
@@ -104,13 +104,13 @@
         shortenedUrlElement.innerText = `Shortened URL: ${data.shortURL}`;
         shortenedUrlElement.style.display = 'block';
   
-        // Réactiver le bouton une fois que la réponse est reçue
+        // Réactivation du bouton une fois la réponse reçue
         submitButton.disabled = false;
       } catch (error) {
         console.error('Error shortening URL:', error);
         shortenedUrlElement.innerText = 'Error shortening URL';
   
-        // Réactiver le bouton en cas d'erreur
+        // Réactivation du bouton en cas d'erreur
         submitButton.disabled = false;
       }
 
