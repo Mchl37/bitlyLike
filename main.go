@@ -7,9 +7,7 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"html/template"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"os"
@@ -29,15 +27,6 @@ type URLMapping struct {
 	OriginalURL string    `json:"original_url" bson:"original_url"`
 	ShortURL    string    `json:"short_url" bson:"short_url"`
 	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
-}
-
-func readHTMLFile(filePath string) (string, error) {
-	content, err := ioutil.ReadFile(filePath)
-	if err != nil {
-		return "", err
-	}
-
-	return string(content), nil
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -85,19 +74,11 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 	fmt.Printf("Nombre total de short_url : %d\n", len(count))
 
+	// fmt.Printf("Nombre total d'éléments dans la collection : %d\n", count)
+
 	// Répondre avec l'URL raccourcie générée
 	response := map[string]string{"shortURL": shortURL}
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		tmpl, err := template.ParseFiles("index.html")
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
 
-		err = tmpl.Execute(w, count)
-		if err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
-		}
-	})
 	// Définir le type de contenu de la réponse comme JSON
 	w.Header().Set("Content-Type", "application/json")
 
