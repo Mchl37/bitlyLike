@@ -2,20 +2,20 @@ package main
 
 import (
 	"context"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 
-	"net/http"
-	"net/http/httptest"
-
-	"time"
-
+	"github.com/go-chi/chi"
 	"github.com/joho/godotenv"
+	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
 func TestMongoDBConnection(t *testing.T) {
+	println("TEST DB START")
 	// Récupérer l'URI MongoDB depuis les variables d'environnement
 	err := godotenv.Load()
 	if err != nil {
@@ -41,42 +41,12 @@ func TestMongoDBConnection(t *testing.T) {
 	}
 
 	t.Log("Successfully connected to MongoDB")
-}
-func TestRedirectToLongURL(t *testing.T) {
-	// Crée une requête HTTP GET avec un shortURL comme paramètre d'URL
-	req, err := http.NewRequest("GET", "/shortURL", nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	// Crée un enregistreur de réponse HTTP factice
-	rr := httptest.NewRecorder()
-
-	// Simule les données de la base de données
-	mockURLMapping := URLMapping{
-		OriginalURL:    "https://www.dealabs.com/bons-plans",
-		ShortURL:       "shortURL",
-		ExpirationDate: time.Now().Add(1 * time.Hour),
-	}
-
-	// Exécute la fonction à tester
-	RedirectToLongURL(rr, req)
-
-	// Vérifie le code de statut de la réponse
-	if status := rr.Code; status != http.StatusMovedPermanently {
-		t.Errorf("handler returned wrong status code: got %v want %v",
-			status, http.StatusMovedPermanently)
-	}
-
-	// Vérifie l'en-tête de localisation de la réponse
-	expectedURL := mockURLMapping.OriginalURL
-	if rr.Header().Get("Location") != expectedURL {
-		t.Errorf("handler returned wrong location header: got %v want %v",
-			rr.Header().Get("Location"), expectedURL)
-	}
+	println("TEST DB END")
 }
 
 func TestGenerateShortURL(t *testing.T) {
+	println("TEST GENERATE SHORT URL Start")
 	// URL d'origine
 	originalURL := "https://www.facebook.com"
 
@@ -107,4 +77,120 @@ func TestGenerateShortURL(t *testing.T) {
 	if shortURL == "" {
 		t.Error("expected non-empty shortURL, got empty string")
 	}
+	println("TEST GENERATE SHORT URL END")
+}
+func TestRedirectToLongURL(t *testing.T) {
+	println("TEST RESDIRECT TO URL STart")
+	// Créer une requête HTTP GET avec un shortURL comme paramètre d'URL
+	req, err := http.NewRequest("GET", "/shortURL", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Créer un enregistreur de réponse HTTP factice
+	rr := httptest.NewRecorder()
+
+	// Exécuter la fonction à tester
+	RedirectToLongURL(rr, req)
+
+	// Vérifier le code de statut de la réponse
+	assert.Equal(t, http.StatusMovedPermanently, rr.Code)
+
+	// Vérifier l'en-tête de localisation de la réponse
+	expectedURL := "https://www.dealabs.com/bons-plans" // L'URL longue attendue
+	assert.Equal(t, expectedURL, rr.Header().Get("Location"))
+	println("TEST RESDIRECT TO URL END")
+}
+func TestGetRoot(t *testing.T) {
+	println("TEST GET ROOT START")
+	// Crée une requête HTTP GET pour la racine "/"
+	req, err := http.NewRequest("GET", "/", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Crée un enregistreur de réponse HTTP factice
+	rr := httptest.NewRecorder()
+
+	// Exécute la fonction à tester
+	GetRoot(rr, req)
+
+	// Vérifie le code de statut de la réponse
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	// Vérifie le contenu de la réponse
+	expectedContentType := "text/html; charset=utf-8"
+	if contentType := rr.Header().Get("Content-Type"); contentType != expectedContentType {
+		t.Errorf("handler returned unexpected content type: got %v want %v",
+			contentType, expectedContentType)
+	}
+	println("TEST GET ROOT END")
+}
+func TestFileServer(t *testing.T) {
+	println("TEST FILE SERVER START")
+	// Crée un routeur Chi
+	r := chi.NewRouter()
+
+	// Appele la fonction FileServer avec un chemin et un système de fichiers factices
+	// Pour ce test, nous utilisons un système de fichiers simple avec un seul fichier
+	testFS := http.Dir("./testdata")
+	FileServer(r, "/assets", testFS)
+
+	// Créeune requête HTTP GET pour un fichier dans le répertoire de test
+	req, err := http.NewRequest("GET", "/assets/testfile.txt", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Créer un enregistreur de réponse HTTP factice
+	rr := httptest.NewRecorder()
+
+	// Exécuter la requête via le routeur
+	r.ServeHTTP(rr, req)
+
+	// Vérifie le code de statut de la réponse
+	if status := rr.Code; status != http.StatusOK {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusOK)
+	}
+
+	// Vérifie le contenu de la réponse
+	expectedContent := "Test file content."
+	if rr.Body.String() != expectedContent {
+		t.Errorf("handler returned unexpected content: got %v want %v",
+			rr.Body.String(), expectedContent)
+	}
+	println("TEST FILE SERVER END")
+}
+func TestRedirectToNonExistentURL(t *testing.T) {
+	println("TEST REDIRECT T NON EXISTENT URL START")
+	// Crée une requête HTTP GET avec un shortURL inexistant comme paramètre d'URL
+	req, err := http.NewRequest("GET", "/nonexistentURL", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Crée un enregistreur de réponse HTTP factice
+	rr := httptest.NewRecorder()
+
+	// Exécuter la fonction à tester
+	RedirectToLongURL(rr, req)
+
+	// Vérifiele code de statut de la réponse
+	if status := rr.Code; status != http.StatusNotFound {
+		t.Errorf("handler returned wrong status code: got %v want %v",
+			status, http.StatusNotFound)
+	}
+
+	// Vérifie le corps de la réponse pour s'assurer qu'il contient un message d'erreur approprié
+	expectedError := "URL not found"
+	if rr.Body.String() != expectedError {
+		t.Errorf("handler returned unexpected body: got %v want %v",
+			rr.Body.String(), expectedError)
+	}
+
+	println("TEST REDIRECT T NON EXISTENT URL END")
 }
