@@ -28,9 +28,17 @@
       align-items: center;
       gap: 3rem;
     }
+    .title {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
     h1 {
       color: #fff;
       font-size: 3rem;
+    }
+    #total-urls {
+      color: white;
     }
     #shortened-url {
       color: #fff;
@@ -51,13 +59,16 @@
       border-radius: 0 20px 20px 0;
       background: antiquewhite;
       font-family: "Alice", sans-serif;
+      cursor: pointer;
+      font-weight: bold;
+      color: #21262C;
     }
   </style>
 </head>
 <body>
   <main>
     <h1>BitlyLike</h1>
-    
+    <div id="total-urls">Shortened URLs: {{TOTAL_URLS}}</div>
     <form id="url-form" action="#" method="post">
       <input type="url" name="url" id="url" placeholder="Enter your URL here" required>
       <button type="submit">Shorten</button>
@@ -68,7 +79,8 @@
   <script>
     const form = document.getElementById('url-form');
     const shortenedUrlElement = document.getElementById('shortened-url');
-    const submitButton = document.querySelector('button[type="submit"]'); // Sélectionnez le bouton de soumission
+    const totalUrlsElement = document.getElementById('total-urls');
+    const submitButton = document.querySelector('button[type="submit"]');
   
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
@@ -88,7 +100,7 @@
         });
         const data = await response.json();
         shortenedUrlElement.innerText = `Shortened URL: ${data.shortURL}`;
-        shortenedUrlElement.style.display = 'block'; // Afficher l'élément
+        shortenedUrlElement.style.display = 'block';
   
         // Réactiver le bouton une fois que la réponse est reçue
         submitButton.disabled = false;

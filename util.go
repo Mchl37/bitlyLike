@@ -16,12 +16,12 @@ type URLMapping struct {
 }
 
 func GenerateShortURL(originalURL string) string {
-	// Générer un hachage unique pour l'URL d'origine
+	// Génération du hachage unique pour l'URL d'origine
 	hash := md5.Sum([]byte(originalURL))
-	// Convertir le hachage en une chaîne hexadécimale
+	// Convertion du hachage en une chaîne hexadécimale
 	hashStr := hex.EncodeToString(hash[:])
-	// Convertir la chaîne hexadécimale en base64 pour obtenir une chaîne plus courte
+	// Convertion de la chaîne hexadécimale en base64 pour obtenir une chaîne plus courte
 	shortBytes := base64.StdEncoding.EncodeToString([]byte(hashStr))
-	// Retourner les 6 premiers caractères du hash
+	// Retourne les 6 premiers caractères du hash
 	return shortBytes[:6]
 }

@@ -12,7 +12,7 @@ import (
 )
 
 func main() {
-	// Charger les variables d'environnement à partir du fichier .env
+	// Chargement des variables .env
 	err := godotenv.Load()
 	if err != nil {
 		fmt.Printf("Error loading .env file: %v\n", err)
@@ -25,7 +25,7 @@ func main() {
 	r.Use(middleware.Logger)
 	r.Use(middleware.Recoverer)
 
-	// Servir les fichiers statiques
+	// Service des fichiers statiques
 	workDir, _ := os.Getwd()
 	filesDir := http.Dir(workDir + "/public")
 	FileServer(r, "/assets", filesDir)
@@ -35,7 +35,7 @@ func main() {
 	r.Post("/shorten", CreateShortURL)
 	r.Get("/{shortURL}", RedirectToLongURL)
 
-	// Démarrer le serveur
+	// Démarrage du serveur
 	err = http.ListenAndServe(":1234", r)
 	if err != nil {
 		fmt.Printf("error starting server: %s\n", err)
@@ -43,7 +43,7 @@ func main() {
 	}
 }
 
-// FileServer crée un gestionnaire de fichiers statiques
+// Création d'un gestionnaire de fichiers statiques
 func FileServer(r chi.Router, path string, root http.FileSystem) {
 	if strings.ContainsAny(path, "{}*") {
 		panic("FileServer ne prend pas de caractères de substitution ou de pièces globales.")
