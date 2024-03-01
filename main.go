@@ -8,7 +8,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"log"
 	"net/http"
 	"os"
 	"strings"
@@ -126,27 +125,6 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-  
-	// Compter le nombre d'éléments dans la collection
-	count, err := collection.Distinct(ctx, "short_url", bson.M{})
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Printf("Nombre total de short_url : %d\n", len(count))
-
-	// fmt.Printf("Nombre total d'éléments dans la collection : %d\n", count)
-
-	// Répondre avec l'URL raccourcie générée
-	response := map[string]string{"shortURL": shortURL}
-
-	// Définir le type de contenu de la réponse comme JSON
-	w.Header().Set("Content-Type", "application/json")
-
-	// Écrire le code de réponse 200 OK
-	w.WriteHeader(http.StatusOK)
-
-	// Écrire la réponse JSON dans le corps de la réponse
-	json.NewEncoder(w).Encode(response)
 }
 
 func redirectToLongURL(w http.ResponseWriter, r *http.Request) {
