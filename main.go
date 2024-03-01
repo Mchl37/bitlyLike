@@ -23,10 +23,11 @@ import (
 )
 
 type URLMapping struct {
-	ID          string    `json:"_id" bson:"_id,omitempty"`
-	OriginalURL string    `json:"original_url" bson:"original_url"`
-	ShortURL    string    `json:"short_url" bson:"short_url"`
-	CreatedAt   time.Time `json:"created_at" bson:"created_at"`
+	ID             string    `json:"_id" bson:"_id,omitempty"`
+	OriginalURL    string    `json:"original_url" bson:"original_url"`
+	ShortURL       string    `json:"short_url" bson:"short_url"`
+	CreatedAt      time.Time `json:"created_at" bson:"created_at"`
+	ExpirationDate time.Time `json:"expiration_date" bson:"expiration_date"`
 }
 
 func getRoot(w http.ResponseWriter, r *http.Request) {
@@ -48,10 +49,7 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Générer une URL raccourcie unique à partir de l'URL d'origine
-	shortURL := generateShortURL(requestBody.LongURL)
-
-	// Enregistrer le mapping dans la base de données
+	// Vérifier si un lien existant pour cette URL est déjà expiré
 	ctx := context.Background()
 	client, err := mongo.Connect(ctx, options.Client().ApplyURI(os.Getenv("MONGO_URI")))
 	if err != nil {
@@ -61,12 +59,74 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 	defer client.Disconnect(ctx)
 
 	collection := client.Database("url_shortener").Collection("urls")
-	_, err = collection.InsertOne(ctx, bson.M{"original_url": requestBody.LongURL, "short_url": shortURL, "created_at": time.Now()})
-	if err != nil {
+	var existingURLMapping URLMapping
+	err = collection.FindOne(ctx, bson.M{"original_url": requestBody.LongURL}).Decode(&existingURLMapping)
+	if err == nil && existingURLMapping.ExpirationDate.Before(time.Now()) {
+		// Le lien existe déjà et il est expiré, donc mettez à jour le lien existant
+		updateResult, err := collection.UpdateOne(ctx, bson.M{"original_url": requestBody.LongURL}, bson.M{
+			"$set": bson.M{
+				"short_url":       generateShortURL(requestBody.LongURL),
+				"created_at":      time.Now(),
+				"expiration_date": time.Now().Add(1 * time.Hour),
+			},
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+		fmt.Printf("Updated %d document(s)\n", updateResult.ModifiedCount)
+
+		// Répondre avec l'URL raccourcie existante
+		response := map[string]string{"shortURL": existingURLMapping.ShortURL}
+
+		// Définir le type de contenu de la réponse comme JSON
+		w.Header().Set("Content-Type", "application/json")
+
+		// Écrire le code de réponse 200 OK
+		w.WriteHeader(http.StatusOK)
+
+		// Écrire la réponse JSON dans le corps de la réponse
+		json.NewEncoder(w).Encode(response)
+
+		// Afficher l'URL raccourcie dans les logs
+		fmt.Println("Shortened URL:", existingURLMapping.ShortURL)
+	} else if err == mongo.ErrNoDocuments || (err == nil && existingURLMapping.ExpirationDate.After(time.Now())) {
+		// Si le lien n'existe pas ou s'il n'est pas expiré, créez un nouveau lien
+		// Générer une URL raccourcie unique à partir de l'URL d'origine
+		shortURL := generateShortURL(requestBody.LongURL)
+
+		// Enregistrer le mapping dans la base de données
+		_, err := collection.InsertOne(ctx, bson.M{
+			"original_url":    requestBody.LongURL,
+			"short_url":       shortURL,
+			"created_at":      time.Now(),
+			"expiration_date": time.Now().Add(1 * time.Hour),
+		})
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		// Répondre avec l'URL raccourcie générée
+		response := map[string]string{"shortURL": "http://localhost:1234/" + shortURL}
+
+		// Définir le type de contenu de la réponse comme JSON
+		w.Header().Set("Content-Type", "application/json")
+
+		// Écrire le code de réponse 200 OK
+		w.WriteHeader(http.StatusOK)
+
+		// Écrire la réponse JSON dans le corps de la réponse
+		json.NewEncoder(w).Encode(response)
+
+		// Afficher l'URL raccourcie dans les logs
+		fmt.Println("Shortened URL:", "http://localhost:1234/"+shortURL)
+	} else if err != nil && err != mongo.ErrNoDocuments {
+		// Une erreur s'est produite lors de la recherche du lien existant
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-
+  
 	// Compter le nombre d'éléments dans la collection
 	count, err := collection.Distinct(ctx, "short_url", bson.M{})
 	if err != nil {
@@ -91,6 +151,7 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 
 func redirectToLongURL(w http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
+	fmt.Println("Short URL from request:", shortURL)
 
 	// Rechercher le mapping dans la base de données
 	ctx := context.Background()
@@ -105,9 +166,21 @@ func redirectToLongURL(w http.ResponseWriter, r *http.Request) {
 	var result URLMapping
 	err = collection.FindOne(ctx, bson.M{"short_url": shortURL}).Decode(&result)
 	if err != nil {
+		// Afficher l'erreur dans les logs
+		fmt.Println("Error fetching URL mapping:", err)
 		http.Error(w, "URL not found", http.StatusNotFound)
 		return
 	}
+
+	// Vérifier si le lien a expiré
+	if result.ExpirationDate.Before(time.Now()) {
+		fmt.Println("URL has expired:", result.ExpirationDate)
+		http.Error(w, "URL has expired", http.StatusNotFound)
+		return
+	}
+
+	// Afficher l'URL longue dans les logs
+	fmt.Println("Original URL:", result.OriginalURL)
 
 	// Rediriger vers l'URL longue correspondante
 	http.Redirect(w, r, result.OriginalURL, http.StatusMovedPermanently)
@@ -120,9 +193,8 @@ func generateShortURL(originalURL string) string {
 	hashStr := hex.EncodeToString(hash[:])
 	// Convertir la chaîne hexadécimale en base64 pour obtenir une chaîne plus courte
 	shortBytes := base64.StdEncoding.EncodeToString([]byte(hashStr))
-	// Formater l'URL raccourcie
-	shortURL := "http://localhost:1234/" + shortBytes[:6] // Utilisez les 6 premiers caractères du hash
-	return shortURL
+	// Retourner les 6 premiers caractères du hash
+	return shortBytes[:6]
 }
 
 func main() {

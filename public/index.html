@@ -48,12 +48,16 @@
   <script>
     const form = document.getElementById('url-form');
     const shortenedUrlElement = document.getElementById('shortened-url');
-
+    const submitButton = document.querySelector('button[type="submit"]'); // Sélectionnez le bouton de soumission
+  
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       const urlInput = document.getElementById('url');
       const url = urlInput.value;
-
+  
+      // Désactiver le bouton pendant le traitement de la requête
+      submitButton.disabled = true;
+  
       try {
         const response = await fetch('/shorten', {
           method: 'POST',
@@ -64,12 +68,18 @@
         });
         const data = await response.json();
         shortenedUrlElement.innerText = `Shortened URL: ${data.shortURL}`;
-        shortenedUrlElement.style.display = 'block';
+        shortenedUrlElement.style.display = 'block'; // Afficher l'élément
+  
+        // Réactiver le bouton une fois que la réponse est reçue
+        submitButton.disabled = false;
       } catch (error) {
         console.error('Error shortening URL:', error);
         shortenedUrlElement.innerText = 'Error shortening URL';
+  
+        // Réactiver le bouton en cas d'erreur
+        submitButton.disabled = false;
       }
     });
-  </script>
+  </script>  
 </body>
 </html>
