@@ -19,7 +19,7 @@ func TestRedirectToLongURL(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Créer un gestionnaire HTTP à partir de la fonction redirectToLongURL
-	handler := http.HandlerFunc(redirectToLongURL)
+	handler := http.HandlerFunc(RedirectToLongURL)
 
 	// Appeler la fonction de gestionnaire HTTP, en passant la requête fictive et l'enregistreur de réponse fictif
 	handler.ServeHTTP(rr, req)
@@ -53,7 +53,7 @@ func TestCreateShortURL(t *testing.T) {
 	rr := httptest.NewRecorder()
 
 	// Crée un gestionnaire HTTP à partir de la fonction createShortURL
-	handler := http.HandlerFunc(createShortURL)
+	handler := http.HandlerFunc(CreateShortURL)
 
 	// Appel la fonction de gestionnaire HTTP, en passant la requête fictive et l'enregistreur de réponse fictif
 	handler.ServeHTTP(rr, req)
