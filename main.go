@@ -67,7 +67,7 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Répondre avec l'URL raccourcie générée
-	response := map[string]string{"shortURL": shortURL}
+	response := map[string]string{"shortURL": "http://localhost:1234/" + shortURL}
 
 	// Définir le type de contenu de la réponse comme JSON
 	w.Header().Set("Content-Type", "application/json")
@@ -77,10 +77,14 @@ func createShortURL(w http.ResponseWriter, r *http.Request) {
 
 	// Écrire la réponse JSON dans le corps de la réponse
 	json.NewEncoder(w).Encode(response)
+
+	// Afficher l'URL raccourcie dans les logs
+	fmt.Println("Shortened URL:", "http://localhost:1234/"+shortURL)
 }
 
 func redirectToLongURL(w http.ResponseWriter, r *http.Request) {
 	shortURL := chi.URLParam(r, "shortURL")
+	fmt.Println("Short URL from request:", shortURL)
 
 	// Rechercher le mapping dans la base de données
 	ctx := context.Background()
@@ -95,9 +99,14 @@ func redirectToLongURL(w http.ResponseWriter, r *http.Request) {
 	var result URLMapping
 	err = collection.FindOne(ctx, bson.M{"short_url": shortURL}).Decode(&result)
 	if err != nil {
+		// Afficher l'erreur dans les logs
+		fmt.Println("Error fetching URL mapping:", err)
 		http.Error(w, "URL not found", http.StatusNotFound)
 		return
 	}
+
+	// Afficher l'URL longue dans les logs
+	fmt.Println("Original URL:", result.OriginalURL)
 
 	// Rediriger vers l'URL longue correspondante
 	http.Redirect(w, r, result.OriginalURL, http.StatusMovedPermanently)
@@ -110,9 +119,8 @@ func generateShortURL(originalURL string) string {
 	hashStr := hex.EncodeToString(hash[:])
 	// Convertir la chaîne hexadécimale en base64 pour obtenir une chaîne plus courte
 	shortBytes := base64.StdEncoding.EncodeToString([]byte(hashStr))
-	// Formater l'URL raccourcie
-	shortURL := "http://localhost:1234/" + shortBytes[:6] // Utilisez les 6 premiers caractères du hash
-	return shortURL
+	// Retourner les 6 premiers caractères du hash
+	return shortBytes[:6]
 }
 
 func main() {
