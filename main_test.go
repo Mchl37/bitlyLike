@@ -1,65 +1,110 @@
 package main
 
 import (
-	"bytes"
-	"fmt"
+	"context"
+	"os"
+	"testing"
+
 	"net/http"
 	"net/http/httptest"
-	"testing"
+
+	"time"
+
+	"github.com/joho/godotenv"
+	"go.mongodb.org/mongo-driver/mongo"
+	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
+func TestMongoDBConnection(t *testing.T) {
+	// Récupérer l'URI MongoDB depuis les variables d'environnement
+	err := godotenv.Load()
+	if err != nil {
+		println("le fichier n'a pas chargé")
+		panic("Error loading .env file")
+	}
+	mongoURI := os.Getenv("MONGO_URI")
+	if mongoURI == "" {
+		t.Fatal("MONGO_URI not set in environment variables")
+	}
+
+	// Connexion à MongoDB
+	client, err := mongo.Connect(context.Background(), options.Client().ApplyURI(mongoURI))
+	if err != nil {
+		t.Fatalf("failed to connect to MongoDB: %v", err)
+	}
+	defer client.Disconnect(context.Background())
+
+	// Vérifier l'état de la connexion
+	err = client.Ping(context.Background(), nil)
+	if err != nil {
+		t.Fatalf("failed to ping MongoDB server: %v", err)
+	}
+
+	t.Log("Successfully connected to MongoDB")
+}
 func TestRedirectToLongURL(t *testing.T) {
-	// Créer une requête GET avec un shortURL fictif
-	req, err := http.NewRequest("GET", "/MGJhND", nil)
+	// Crée une requête HTTP GET avec un shortURL comme paramètre d'URL
+	req, err := http.NewRequest("GET", "/shortURL", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Créer un enregistreur de réponse factice
+	// Crée un enregistreur de réponse HTTP factice
 	rr := httptest.NewRecorder()
 
-	// Créer un gestionnaire HTTP à partir de la fonction redirectToLongURL
-	handler := http.HandlerFunc(RedirectToLongURL)
+	// Simule les données de la base de données
+	mockURLMapping := URLMapping{
+		OriginalURL:    "https://www.dealabs.com/bons-plans",
+		ShortURL:       "shortURL",
+		ExpirationDate: time.Now().Add(1 * time.Hour),
+	}
 
-	// Appeler la fonction de gestionnaire HTTP, en passant la requête fictive et l'enregistreur de réponse fictif
-	handler.ServeHTTP(rr, req)
+	// Exécute la fonction à tester
+	RedirectToLongURL(rr, req)
 
-	// Vérifier le code de statut de la réponse
+	// Vérifie le code de statut de la réponse
 	if status := rr.Code; status != http.StatusMovedPermanently {
 		t.Errorf("handler returned wrong status code: got %v want %v",
 			status, http.StatusMovedPermanently)
 	}
 
-	// Vérifier que la redirection se fait vers l'URL longue attendue
-	expectedURL := "https://www.dealabs.com/bons-plans"
-	if location := rr.Header().Get("Location"); location != expectedURL {
-		t.Errorf("handler returned unexpected redirect location: got %v want %v",
-			location, expectedURL)
+	// Vérifie l'en-tête de localisation de la réponse
+	expectedURL := mockURLMapping.OriginalURL
+	if rr.Header().Get("Location") != expectedURL {
+		t.Errorf("handler returned wrong location header: got %v want %v",
+			rr.Header().Get("Location"), expectedURL)
 	}
 }
 
-func TestCreateShortURL(t *testing.T) {
-	// Corps de la requête JSON avec une URL longue
-	requestBody := `{"longURL": "https://www.dealabs.com/bons-plans"}`
+func TestGenerateShortURL(t *testing.T) {
+	// URL d'origine
+	originalURL := "https://www.facebook.com"
 
-	// Crée une requête POST avec le corps JSON
-	req, err := http.NewRequest("POST", "/shorten", bytes.NewBufferString(requestBody))
-	if err != nil {
-		t.Fatal(err)
+	// Générer l'URL courte
+	shortURL := GenerateShortURL(originalURL)
+
+	// Vérifier la longueur de l'URL courte
+	expectedLength := 6
+	if len(shortURL) != expectedLength {
+		t.Errorf("expected length of shortURL to be %d, got %d", expectedLength, len(shortURL))
 	}
-	req.Header.Set("Content-Type", "application/json")
 
-	// Crée un enregistreur de réponse factice
-	rr := httptest.NewRecorder()
+	// Vérifier si l'URL courte est non vide
+	if shortURL == "" {
+		t.Error("expected non-empty shortURL, got empty string")
+	}
 
-	// Crée un gestionnaire HTTP à partir de la fonction createShortURL
-	handler := http.HandlerFunc(CreateShortURL)
+	// Réessaye avec une autre URL d'origine
+	originalURL = "https://www.google.com"
+	shortURL = GenerateShortURL(originalURL)
 
-	// Appel la fonction de gestionnaire HTTP, en passant la requête fictive et l'enregistreur de réponse fictif
-	handler.ServeHTTP(rr, req)
+	// Vérifie à nouveau la longueur de l'URL courte
+	if len(shortURL) != expectedLength {
+		t.Errorf("expected length of shortURL to be %d, got %d", expectedLength, len(shortURL))
+	}
 
-	// Afficher les détails de la réponse enregistrée
-	fmt.Println("Response Body:", rr.Body.String())
-	fmt.Println("Status Code:", rr.Code)
-	fmt.Println("Headers:", rr.Header())
+	// Vérifie à nouveau si l'URL courte est non vide
+	if shortURL == "" {
+		t.Error("expected non-empty shortURL, got empty string")
+	}
 }
