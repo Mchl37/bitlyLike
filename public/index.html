@@ -67,8 +67,10 @@
 </head>
 <body>
   <main>
-    <h1>BitlyLike</h1>
-    <div id="total-urls">Shortened URLs: {{TOTAL_URLS}}</div>
+    <div class="title">
+      <h1>BitlyLike</h1>
+      <div id="total-urls">Shortened URLs: {{TOTAL_URLS}}</div>
+    </div>
     <form id="url-form" action="#" method="post">
       <input type="url" name="url" id="url" placeholder="Enter your URL here" required>
       <button type="submit">Shorten</button>
@@ -111,6 +113,11 @@
         // Réactiver le bouton en cas d'erreur
         submitButton.disabled = false;
       }
+
+      const totalUrlsResponse = await fetch('/totalurls');
+      const totalUrlsData = await totalUrlsResponse.json();
+      totalUrlsElement.innerText = `Total URLs: ${totalUrlsData.totalURLs}`;
+      totalUrlsElement.style.display = 'block';
     });
   </script>  
 </body>
