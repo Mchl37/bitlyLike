@@ -25,6 +25,13 @@ Pour installer et exécuter BitlyLike sur votre propre machine, suivez ces étap
 
 8 - L'application devrait maintenant être accessible à l'adresse http://localhost:1234.
 
+## Modèle MongoDB
+ID             string    `json:"_id" bson:"_id,omitempty"`<br/>
+OriginalURL    string    `json:"original_url" bson:"original_url"`<br/>
+ShortURL       string    `json:"short_url" bson:"short_url"`<br/>
+CreatedAt      time.Time `json:"created_at" bson:"created_at"`<br/>
+ExpirationDate time.Time `json:"expiration_date" bson:"expiration_date"`
+
 ## Utilisation
 
 Une fois l'application en cours d'exécution, vous pouvez accéder à l'interface utilisateur à l'adresse http://localhost:1234 dans votre navigateur. Vous pouvez entrer une URL longue dans le champ prévu à cet effet, puis cliquer sur le bouton "Shorten" pour obtenir une version raccourcie de l'URL. La version raccourcie sera affichée sous le champ de saisie une fois générée.
